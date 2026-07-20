@@ -302,16 +302,25 @@ def render_keyword_badges(keywords, color="#0f9d58", text_color="#ffffff"):
 
 
 def extract_skills(text):
-    text_lower = clean_text(text)
+    text = text.lower()
     found_skills = set()
+
+    # Match predefined skills
     for skill in SKILL_TERMS:
-        pattern = r"\b" + re.escape(skill) + r"\b"
-        if re.search(pattern, text_lower):
+        if skill.lower() in text:
             found_skills.add(skill)
-    extra_keywords = extract_keywords(text, top_n=50)
-    for keyword in extra_keywords:
-        if keyword in SKILL_TERMS:
-            found_skills.add(keyword)
+
+    # Use spaCy to extract additional technical terms
+    doc = nlp(text)
+
+    for token in doc:
+        if (
+            token.pos_ in ["NOUN", "PROPN"]
+            and not token.is_stop
+            and len(token.text) > 2
+        ):
+            found_skills.add(token.lemma_.lower())
+
     return sorted(found_skills)
 
 
