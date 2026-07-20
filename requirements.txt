@@ -1,8 +1,11 @@
 streamlit
+spacy
+sentence-transformers
+PyPDF2
+numpy
 matplotlib
 scikit-learn
-numpy
-PyPDF2
-nltk
+docx2txt
 fpdf
-spacy
+language-tool-python
+nltk
