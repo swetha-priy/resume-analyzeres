@@ -1,4 +1,5 @@
 import streamlit as st
+import google.generativeai as genai
 import spacy
 
 try:
@@ -14,6 +15,10 @@ import numpy as np
 import PyPDF2
 import re
 import nltk
+
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 nltk.download("punkt", quiet=True)
 nltk.download("punkt_tab", quiet=True)
@@ -466,6 +471,34 @@ def display_chart(matched_count, missing_count):
         ax.text(index, value + 0.1, str(value), ha="center", va="bottom")
     st.pyplot(fig)
 
+def analyze_resume_with_gemini(resume_text, job_description):
+    prompt = f"""
+You are an expert ATS Resume Analyzer.
+
+Compare the following resume with the job description.
+
+Resume:
+{resume_text}
+
+Job Description:
+{job_description}
+
+Provide:
+
+1. ATS Score (0-100)
+2. Matching Skills
+3. Missing Skills
+4. Resume Strengths
+5. Resume Weaknesses
+6. Resume Improvement Suggestions
+7. Better Professional Summary
+8. Interview Questions
+
+Return the answer in Markdown.
+"""
+
+    response = model.generate_content(prompt)
+    return response.text
 
 def main():
     uploaded_file = st.file_uploader("Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
@@ -595,6 +628,22 @@ def main():
 
         st.markdown("---")
         st.subheader("Grammar Analysis")
+        st.markdown("---")
+st.subheader("🤖 Gemini AI Resume Analysis")
+
+if st.button("Analyze with Gemini AI"):
+    with st.spinner("Gemini is analyzing your resume..."):
+        try:
+            ai_result = analyze_resume_with_gemini(
+                resume_text,
+                job_description
+            )
+
+            st.markdown(ai_result)
+
+        except Exception as e:
+            st.error(f"Gemini Error: {e}")
+            
         if grammar_issues:
             for issue in grammar_issues:
                 st.markdown(f"- {issue}")

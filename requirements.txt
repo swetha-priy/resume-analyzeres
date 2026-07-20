@@ -10,3 +10,4 @@ docx2txt
 fpdf
 language-tool-python
 nltk
+google-generativeai
