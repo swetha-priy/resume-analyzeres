@@ -5,3 +5,4 @@ numpy
 PyPDF2
 nltk
 fpdf
+spacy

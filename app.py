@@ -1,4 +1,7 @@
 import streamlit as st
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -19,6 +22,7 @@ from collections import Counter
 import tempfile
 import os
 import io
+import importlib
 
 try:
     import docx2txt
@@ -36,9 +40,14 @@ except ImportError:
     FPDF = None
 
 try:
-    import language_tool_python
+    language_tool_python = importlib.import_module("language_tool_python")
 except ImportError:
     language_tool_python = None
+
+try:
+    spacy = importlib.import_module("spacy")
+except ImportError:
+    spacy = None
 
 for resource, path in [
     ("punkt", "tokenizers/punkt"),
@@ -114,6 +123,10 @@ if FPDF is None:
 if language_tool_python is None:
     st.sidebar.warning(
         "Grammar analysis works best with language-tool-python installed (pip install language-tool-python). A basic fallback will still run."
+    )
+if spacy is None:
+    st.sidebar.warning(
+        "spaCy support is optional. Install it with pip install spacy and python -m spacy download en_core_web_sm for richer entity extraction."
     )
 
 
@@ -230,16 +243,40 @@ def tfidf_similarity_score(resume_text, job_description):
 
 
 def extract_keywords(text, top_n=30):
-    cleaned = clean_text(text)
-    tokens = [token for token in word_tokenize(cleaned) if len(token) > 1]
-    filtered = [token for token in tokens if token not in stopwords.words("english")]
+    doc = nlp(text)
+
+    keywords = []
+
+    for token in doc:
+        if (
+            token.pos_ in ["NOUN", "PROPN", "ADJ"]
+            and not token.is_stop
+            and len(token.text) > 2
+        ):
+            keywords.append(token.lemma_.lower())
+
+    # Remove duplicates while preserving order
+    return list(dict.fromkeys(keywords))[:top_n]
+
+def extract_spacy_entities(text):
+    if spacy is None:
+        return []
     try:
-        tagged = pos_tag(filtered)
-        candidates = [token for token, pos in tagged if pos.startswith("NN") or pos.startswith("JJ") or pos.startswith("VB")]
-    except LookupError:
-        candidates = filtered
-    freq = Counter(candidates)
-    return [word for word, _ in freq.most_common(top_n)]
+        nlp = spacy.load("en_core_web_sm")
+    except OSError:
+        return []
+    except Exception:
+        return []
+
+    try:
+        doc = nlp(text)
+        entities = []
+        for ent in doc.ents:
+            if ent.text and ent.label_:
+                entities.append(f"{ent.text} ({ent.label_})")
+        return entities[:15]
+    except Exception:
+        return []
 
 
 def extract_key_phrases(text, top_n=15):
